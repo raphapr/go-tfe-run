@@ -28,7 +28,13 @@ type ClientConfig struct {
 	Organization string
 	// The workspace on Terraform Cloud.
 	Workspace string
+	// The address of the Terraform Enterprise API
+	Address string
 }
+
+const (
+	DefaultAddress = "https://app.terraform.io"
+)
 
 // Client is used to interact with the Run API of a single workspace on
 // Terraform Cloud.
@@ -39,8 +45,14 @@ type Client struct {
 
 // NewClient creates a Client from ClientConfig.
 func NewClient(ctx context.Context, cfg ClientConfig) (*Client, error) {
+
+	if cfg.Address == "" {
+		cfg.Address = DefaultAddress
+	}
+
 	config := &tfe.Config{
-		Token: cfg.Token,
+		Token:   cfg.Token,
+		Address: cfg.Address,
 	}
 	tfeClient, err := tfe.NewClient(config)
 	if err != nil {
