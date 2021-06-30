@@ -28,7 +28,13 @@ type ClientConfig struct {
 	Organization string
 	// The workspace on Terraform Cloud.
 	Workspace string
+	// The host of the Terraform Enterprise API
+	Host string
 }
+
+const (
+	DefaultHost = "app.terraform.io"
+)
 
 // Client is used to interact with the Run API of a single workspace on
 // Terraform Cloud.
@@ -39,8 +45,14 @@ type Client struct {
 
 // NewClient creates a Client from ClientConfig.
 func NewClient(ctx context.Context, cfg ClientConfig) (*Client, error) {
+
+	if cfg.Host == "" {
+		cfg.Host = DefaultHost
+	}
+
 	config := &tfe.Config{
-		Token: cfg.Token,
+		Token:   cfg.Token,
+		Address: fmt.Sprintf("https://%s", cfg.Host),
 	}
 	tfeClient, err := tfe.NewClient(config)
 	if err != nil {
@@ -109,7 +121,12 @@ type RunOutput struct {
 // disabled auto-apply (to avoid blocking indefinitely).
 // If the run does not complete within one hour, ErrTimeout is returned. This
 // will not cancel the remote operation.
-func (c *Client) Run(ctx context.Context, options RunOptions) (output RunOutput, err error) {
+func (c *Client) Run(ctx context.Context, cfg ClientConfig, options RunOptions) (output RunOutput, err error) {
+
+	if cfg.Host == "" {
+		cfg.Host = DefaultHost
+	}
+
 	cvOptions := tfe.ConfigurationVersionCreateOptions{
 		// Don't automatically queue the new run, we want to create the run
 		// manually to be able to set the message.
@@ -201,8 +218,8 @@ func (c *Client) Run(ctx context.Context, options RunOptions) (output RunOutput,
 	}
 
 	output.RunURL = fmt.Sprintf(
-		"https://app.terraform.io/app/%v/workspaces/%v/runs/%v",
-		c.workspace.Organization.Name, c.workspace.Name, r.ID,
+		"https://%v/app/%v/workspaces/%v/runs/%v",
+		cfg.Host, c.workspace.Organization.Name, c.workspace.Name, r.ID,
 	)
 
 	fmt.Printf("Run %v has been queued\n", r.ID)
